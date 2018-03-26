@@ -1,9 +1,8 @@
-#include <Stepper.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 
-#define echoPin 3
-#define trigPin 4
+#define echoPinPos 3
+#define trigPinPos 4
 
 /*
  * erste Dimension: ausgewählter Tower
@@ -32,12 +31,11 @@ volatile short lKPos[4][3];
 RF24 radio (0, 0);
 const uint64_t adress = 0xF0F0F0F0F0;
 
-void setup() {
-  Serial.begin(9600);
-  
+void initializePosSystem()
+{
   radio.begin();
-  radio.setPALevel(RF24_PA_MAX);
-  radio.setDataRate(RF24_250KBPS);//test RF24_250KBPS later maybe, but i dunno (only works with + variants), this method returns a boolean that indicates the success of the setFunction
+  radio.setPALevel(RF24_PA_HIGH);
+  radio.setDataRate(RF24_1MBPS);//test RF24_250KBPS later maybe, but i dunno (only works with + variants), this method returns a boolean that indicates the success of the setFunction
   radio.setAutoAck(false);//cus we want >1 devices to listen to this message... think about it a bit, it will make sense
   radio.disableCRC();
 
@@ -52,18 +50,13 @@ void setup() {
   Serial.print(radio.isPVariant());
   Serial.println(".");
 
-  pinMode(trigPin, OUTPUT);
-  attachInterrupt(digitalPinToInterrupt(echoPin), measure, CHANGE);
-  digitalWrite(trigPin, LOW);
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
+  pinMode(trigPinPos, OUTPUT);
+  attachInterrupt(digitalPinToInterrupt(echoPinPos), measure, CHANGE);
+  digitalWrite(trigPinPos, LOW);
 }
 
 void measure(){
-  if(digitalRead(echoPin) == HIGH){
+  if(digitalRead(echoPinPos) == HIGH){
     startTime = micros();
   } else{
     long duration = micros()-startTime; 
@@ -120,6 +113,10 @@ void receivedMessage() {
   }
 }
 
+/*
+ * Leitet die Distanzmessung zu einem bestimmten Tower ein
+ * @param data erster character entspricht dem Tower 0-2, zu dem die Distanz gemessen werden soll
+ */
 void orderedMeasure(String data)
 {
   char c = data.charAt(0);
@@ -138,7 +135,7 @@ void orderedMeasure(String data)
 }
 
 /*
- * erster char: nummer des Bots
+ * erster char: nummer des Bots (0-3)
  * Rest des Strings: zwei ints, getrennt durch ein ','
  */
 void incomingPos(String data)
@@ -169,11 +166,11 @@ void incomingPos(String data)
 }
 
 void prepUS() {
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigPinPos, LOW);
   delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigPinPos, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigPinPos, LOW);
 }
 
 void radioListenMode() {
@@ -186,12 +183,22 @@ void radioWriteMode() {
   radio.openWritingPipe(adress);
 }
 
-//Sends the bots coordinates to the other bot; Coordinates are separated by ','.
+//Sends the bots coordinates to the other bot; First character of the data is the bot that sent it (0-3); Coordinates are separated by ','.
 void orderedSendPos() {
   radioWriteMode();
-  String msg = String('5' + 'i' + lKPos[0][0]) + "," + String(lKPos[0][1]);
+  String msg = String("5i0" + lKPos[0][0]) + "," + String(lKPos[0][1]);
   char text[32] = "";
   msg.toCharArray(text, sizeof(text));
   radio.write(&text, sizeof(text));
   radioListenMode();
+}
+
+void setup() {
+  initializePosSystem();
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
 }
