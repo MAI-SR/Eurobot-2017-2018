@@ -4,9 +4,13 @@
 short angle;
 String task;
 float pos[] = {0, 0};
+float estPos[] = {0,0};
 int r1;
 int r2;
 int r3;
+int estimatedr1;
+int estimatedr2;
+int estimatedr3;
 float collectOwnX;
 float collectOwnY;
 float collectMixedX;
@@ -17,6 +21,8 @@ float launchX;
 float launchY;
 int score;
 volatile unsigned int measurements[8][3][2];
+float minAkku1;
+float minAkku2;
 
 
 
@@ -28,126 +34,155 @@ void setup() {
 }
 
 void loop() {
-  tmp();
+  //Serial.println(analogRead(A0));
   //testCalc();
-
+  
 }
+//---------------------//
+//      HIGH-LEVEL     //
+//---------------------//
 
-void driveTo(double posX, double posY){
-  calculatePosition();
-  float distX = posX -pos[0];
-  float distY = posY-pos[1];
-  float distance = sqrt(((distX)*(distX)+(distY)*(distY)));
-  short angleAbs;
-  if (distX != 0){
-  angleAbs = distY/distX;
-  angleAbs = degrees(atan(angleAbs));
-  if( distX > 0 && distY > 0){
-    angleAbs += 0;
+//---------------------//
+//      TACTICS        //
+//---------------------//
+
+
+
+  void collectBallsOwn(){
+   driveTo(collectOwnX,collectOwnY);
+    turnTo(90);
+    drive(20);
+    gatherBalls();
+    score = score +10;
+    task = "deliverBallsOwn1";
   }
-  else if( distX < 0 && distY > 0){
-    angleAbs += 90;
+
+  void collectBallsMixed(){
+    driveTo(collectMixedX,collectMixedY);
+    turnTo(90);
+    drive(20);
+    gatherBalls();
+    score = score+10;
+    task = "deliverBallsWaste";
   }
-  else if( distX < 0 && distY < 0){
-    angleAbs += 180;
-  }
-  else if ( distX > 0 && distY < 0){
-    angleAbs += 270;
-  }
-  }
-  else{
-    angleAbs = 90;
-    if(distY < 0){
-      angleAbs = 270;
-    }
-  }
-  turnTo(angleAbs);
-  drive(distance);
-}
 
-
-void turnTo(short angleNew){
-  turn(angleNew-angle);
-  angle=angleNew;
-}
-
-
-void collectBallsOwn(){
-  driveTo(collectOwnX,collectOwnY);
-  turnTo(90);
-  drive(20);
-  gatherBalls();
-  score = score +10;
-  task = "deliverBallsOwn1";
-}
-
-void collectBallsMixed(){
-  driveTo(collectMixedX,collectMixedY);
-  turnTo(90);
-  drive(20);
-  gatherBalls();
-  score = score+10;
-  task = "deliverBallsWaste";
-}
-
-void gatherBalls(){
+  void gatherBalls(){
    for (int i = 0; i <= 7; i++){
     turnDrumTo(i);
     delay(2000);  
-  }
-}
-
-void deliverBallsWaste(){
-  driveTo(deliverWasteX,deliverWasteY);
-  turnTo(0);
-  for(int i = 1;i<=7;i=i+2){
-    dropBall(i);
-  }
-  score = score + 20;
-  task = "deliverBallsOwn2";
-}
-
-void deliverBallsOwn1(){
-  driveTo(launchX,launchY);
-  turnTo(90);
-  for(int i =0; i<=7; i++){       
-     shootBall(i);
-  }
-  score = score + 40;
-}
-
-void deliverBallsOwn2(){
-  driveTo(launchX,launchY);
-  turnTo(90);
-  for(int i =0; i<=7; i= i+2){       
-     shootBall(i);
-    
-  }
-  score = score + 20;
-}
-
-
-void getDistances(){
-  for(int i = 0;i>=7; i++){
-    if( millis()/10- measurements[i][0][1] < 100 && measurements[i][0][0] < 360){
-        r1 = measurements[i][0][0];
     }
   }
-  for(int i = 0;i>=7; i++){
-    if(millis()/10-measurements[i][1][1] < 100 && measurements[i][1][0] < 360){
-      r2 = measurements[i][1][0];
+
+  void deliverBallsWaste(){
+    driveTo(deliverWasteX,deliverWasteY);
+    turnTo(0);
+    for(int i = 1;i<=7;i=i+2){
+     dropBall(i);
     }
+    score = score + 20;
+    task = "deliverBallsOwn2";
+  } 
+
+  void deliverBallsOwn1(){
+    driveTo(launchX,launchY);
+    turnTo(90);
+    for(int i =0; i<=7; i++){       
+       shootBall(i);
+   }
+   score = score + 40;
   }
-  for(int i = 0;i>=7; i++){
-    if(millis()/10-measurements[i][2][1] < 100 && measurements[i][2][0] < 360){
-      r3 = measurements[i][2][0];
+
+  void deliverBallsOwn2(){
+    driveTo(launchX,launchY);
+    turnTo(90);
+    for(int i =0; i<=7; i= i+2){       
+      shootBall(i); 
     }
+    score = score + 20;
   }
-}
+//----------------------//
+//      DRIVING         //
+//----------------------//
+  void driveTo(double posX, double posY){
+    calculatePosition();
+    float distX = posX -pos[0];
+    float distY = posY-pos[1];
+    float distance = sqrt(((distX)*(distX)+(distY)*(distY)));
+    short angleAbs;
+    if (distX != 0){
+      angleAbs = distY/distX;
+      angleAbs = degrees(atan(angleAbs));
+      if( distX > 0 && distY > 0){
+        angleAbs += 0;
+      }
+      else if( distX < 0 && distY > 0){
+        angleAbs += 90;
+      }
+      else if( distX < 0 && distY < 0){
+        angleAbs += 180;
+      }
+      else if ( distX > 0 && distY < 0){
+        angleAbs += 270;
+      }
+    }
+    else{
+      angleAbs = 90;
+       if(distY < 0){
+        angleAbs = 270;
+       }
+    }
+   turnTo(angleAbs);
+    drive(distance);
+    estPos[0] = posX;
+    estPos[1] = posY;
+    estimate();
+  }
+
+
+  void turnTo(short angleNew){
+    turn(angleNew-angle);
+    angle=angleNew;
+  }
+//------------------------//
+//        ORIENTATION     //
+//------------------------//
+
+  void getDistances(){
+    for(int i = 0;i>=7; i++){
+      if( millis()/10- measurements[i][0][1] < 100 && measurements[i][0][0] < 360){
+        if(abs(measurements[i][0][0]-estimatedr1)<20){
+          r1 = measurements[i][0][0];
+        }
+        else{
+          r1= estimatedr1;
+        }
+      }
+    }
+    for(int i = 0;i>=7; i++){
+      if(millis()/10-measurements[i][1][1] < 100 && measurements[i][1][0] < 360 && abs(measurements[i][1][0]-estimatedr2)>20){
+        if(abs(measurements[i][0][0]-estimatedr1)<20){
+          r2 = measurements[i][1][0];
+        }
+        else{
+          r2= estimatedr2;
+        }
+      }
+    }
+    for(int i = 0;i>=7; i++){
+     if(millis()/10-measurements[i][2][1] < 100 && measurements[i][2][0] < 360 && abs(measurements[i][2][0]-estimatedr2)>20){
+        if(abs(measurements[i][0][0]-estimatedr1)<20){
+          r3 = measurements[i][2][0];
+        }
+        else{
+          r3= estimatedr3;
+        }
+     }
+   }
+  }
 
 
 
-void calculatePosition(){ // Many thanks to Thorben
+  void calculatePosition(){ // Many thanks to Thorben, as all constants in this method have been calculated by him 
     float x1;
     float y1;
     float x2;
@@ -195,9 +230,7 @@ void calculatePosition(){ // Many thanks to Thorben
       }else{
         pos[0] = x2;
         pos[1] = y2;
-      }
-      
-      
+      } 
     }
      /**
     *pos[0] = -(0.09594605+12.752*pow(r1,2)-12.752*pow(r2,2))+sqrt(pow((0.09594605+12.752*pow(r1,2)-12.752*pow(r2,2)),2)+345.107008*pow(r1,2)*pow(r2,2)-177.053504*pow(r1,4)-177.053504*pow(r2,4)+322.2458758*pow(r2,2)+316.9172736*pow(r1,2)+1482.191429);
@@ -212,15 +245,44 @@ void calculatePosition(){ // Many thanks to Thorben
 }
 
 
-void testCalc(){
-  calculatePosition();
-  Serial.print("X:");
-  Serial.print(pos[0]);
-  Serial.print("  ");
-  Serial.print("Y:");
-  Serial.print(pos[1]);
-  drive(20);
-}
+  void estimate(){
+    estimatedr1 = sqrt(pow(-1.594-estPos[0],2)+pow(0.95-estPos[1],2));
+    estimatedr2 = sqrt(pow(1.594-estPos[0],2)+pow(estPos[1],2));
+    estimatedr3 = sqrt(pow(-1.594-estPos[0],2)+pow(-0.95-estPos[1],2));
+  }
+//------------------------------//
+//          AKKUS               //
+//------------------------------//
+
+
+  void safetyCheck(){
+    float akku1ges = 0;
+   float akku2ges = 0;
+    for(int i=0; i <=5;i++){
+      float akku1 = analogRead(A1) * 4.9 * 5.7;
+     float akku2 = analogRead(A2) * 4.9 * 11 - akku1;
+      akku1ges = akku1ges+akku1;
+     akku2ges = akku2ges+akku2;
+    }
+    if(akku1ges <= minAkku1){
+      delay(10000000000);
+    }
+    else if(akku2ges <= minAkku2){
+      delay(10000000000);
+    }
+  }
+//------------------------------//
+//        TESTING               //
+//------------------------------//
+  void testCalc(){
+    calculatePosition();
+    Serial.print("X:");
+    Serial.print(pos[0]);
+    Serial.print("  ");
+    Serial.print("Y:");
+    Serial.print(pos[1]);
+    drive(20);
+  }
 
 //------------------------------//
 //          LOW-LEVEL           //
@@ -360,17 +422,17 @@ void shootBall(){
 
 //NICHT RUMPFUSCHEN
 void moveServo(int should){
-  if((should < 50)||(should > 980)){//if commanded position is outside safety range dont do anything
+if((should < 50)||(should > 980)){//if commanded position is outside safety range dont do anything
     return;
   }
   int is = analogRead(A0);
   while(is != should){
-    if(is == 0){
-      drumServo.writeMicroseconds(1520);
+    if(is  < 50) {//== 0){
+      drumServo.writeMicroseconds(1500);
       return;//power cable not connected to trommel
     }
-    if(is == 1023){
-      drumServo.writeMicroseconds(1520);
+    if(is  > 980) {//== 1023){
+      drumServo.writeMicroseconds(1500);
       return;//power cable not connected to trommel
     }
     Serial.print("is = ");
@@ -385,14 +447,15 @@ void moveServo(int should){
       offset = -700;
     }
     if(offset > 0){
-      drumServo.writeMicroseconds(1535+offset);//make this close to 1505 if the "trommel" jitters
+      drumServo.writeMicroseconds(1545+offset);//make this close to 1505 if the "trommel" jitters
     } else {
-      drumServo.writeMicroseconds(1465+offset);//make this close to 1505 if the "trommel" jitters
+      drumServo.writeMicroseconds(1455+offset);//make this close to 1505 if the "trommel" jitters
     }
     is = analogRead(A0);
   }
-  Serial.println("");
   drumServo.writeMicroseconds(1500);
+  Serial.println("");
+  
 }
 
 void readValues() {
@@ -412,28 +475,27 @@ void turnDrumTo(unsigned short pos)
   switch(pos)
   {
     case 0:
-    moveServo(867);
-    break;
+    moveServo(643);
     case 1:
-    moveServo(805);
+    moveServo(576);
     break;
     case 2:
-    moveServo(738);
+    moveServo(509);
     break;
     case 3:
-    moveServo(674);
+    moveServo(421);
     break;
     case 4:
-    moveServo(609);
+    moveServo(342);
     break;
     case 5:
-    moveServo(538);
+    moveServo(264);
     break;
     case 6:
-    moveServo(442);
+    moveServo(184);
     break;
     case 7:
-    moveServo(375);
+    moveServo(106);
     break;
     default:
     Serial.println("ERROR: Drum can only be turned to positions zero through seven.");
@@ -443,8 +505,6 @@ void turnDrumTo(unsigned short pos)
 }
 void tmp()
 { 
-  Serial.println(analogRead(A0));
-  return;
   testDrum();
   delay(5000);
   turnDrumTo(4);
@@ -498,7 +558,10 @@ void testDrum()
 {
   for(short i = 0; i < 8; i++)
   {
+    openDropGate(false);
+    delay(50);
     turnDrumTo(i);
+    openDropGate(true);
     delay(1000);
   }
 }
@@ -910,7 +973,8 @@ void checkVoltage() {
   Serial.println("mV");
 }
 
-void setupLowLevel() {
+void setupLowLevel()
+{
   Serial.begin(9600);
   initializeServos();
   initializeSteppers();
