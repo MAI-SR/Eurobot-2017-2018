@@ -1,5 +1,7 @@
 #include <math.h>
-#include<time.h>
+
+#define minAkku1 11.1
+#define minAkku2 11.1
 
 short angle;
 String task;
@@ -11,6 +13,8 @@ int r3;
 int estimatedr1;
 int estimatedr2;
 int estimatedr3;
+float startPosX;
+float startPosY;
 float collectOwnX;
 float collectOwnY;
 float collectMixedX;
@@ -21,8 +25,6 @@ float launchX;
 float launchY;
 int score;
 volatile unsigned int measurements[8][3][2];
-float minAkku1;
-float minAkku2;
 
 
 
@@ -31,22 +33,48 @@ float minAkku2;
 
 void setup() {
   setupLowLevel();
+  setupHighLevel();
 }
 
 void loop() {
   //Serial.println(analogRead(A0));
-  //testCalc();
+  testCalc();
+  //main();
   
 }
 //---------------------//
 //      HIGH-LEVEL     //
 //---------------------//
 
+
+
+//---------------------//
+//      SETUP          //
+//---------------------//
+
+
+
+  void setupHighLevel(){
+    pos[0] = startPosX;
+    pos[1] = startPosY;
+    angle =0;
+    estPos[0] = pos[0];
+    estPos[1] =pos[1];
+    estimate();
+    task = "Start";
+    score = 0;
+  }
+
 //---------------------//
 //      TACTICS        //
 //---------------------//
 
 
+  /*
+   * void main(){
+   * 
+   * }
+   */
 
   void collectBallsOwn(){
    driveTo(collectOwnX,collectOwnY);
@@ -103,6 +131,9 @@ void loop() {
 //----------------------//
 //      DRIVING         //
 //----------------------//
+
+
+
   void driveTo(double posX, double posY){
     calculatePosition();
     float distX = posX -pos[0];
@@ -141,20 +172,23 @@ void loop() {
 
   void turnTo(short angleNew){
     turn(angleNew-angle);
-    angle=angleNew;
+    angle = angleNew;
   }
 //------------------------//
 //        ORIENTATION     //
 //------------------------//
+
+
 
   void getDistances(){
     for(int i = 0;i>=7; i++){
       if( millis()/10- measurements[i][0][1] < 100 && measurements[i][0][0] < 360){
         if(abs(measurements[i][0][0]-estimatedr1)<20){
           r1 = measurements[i][0][0];
+          break;
         }
         else{
-          r1= estimatedr1;
+          r1 = estimatedr1;
         }
       }
     }
@@ -162,9 +196,10 @@ void loop() {
       if(millis()/10-measurements[i][1][1] < 100 && measurements[i][1][0] < 360 && abs(measurements[i][1][0]-estimatedr2)>20){
         if(abs(measurements[i][0][0]-estimatedr1)<20){
           r2 = measurements[i][1][0];
+          break;
         }
         else{
-          r2= estimatedr2;
+          r2 = estimatedr2;
         }
       }
     }
@@ -172,9 +207,10 @@ void loop() {
      if(millis()/10-measurements[i][2][1] < 100 && measurements[i][2][0] < 360 && abs(measurements[i][2][0]-estimatedr2)>20){
         if(abs(measurements[i][0][0]-estimatedr1)<20){
           r3 = measurements[i][2][0];
+          break;
         }
         else{
-          r3= estimatedr3;
+          r3 = estimatedr3;
         }
      }
    }
@@ -194,17 +230,17 @@ void loop() {
     getDistances();
     while(332,63-(r1+r2)> 0)
     {
-      r1=r1+1;
-      r2=r2+1;
+      r1 = r1+1;
+      r2 = r2+1;
     }
     float discr = pow((0.09594605+12.752*pow(r1,2)-12.752*pow(r2,2)),2)+345.107008*pow(r1,2)*pow(r2,2)-177.053504*pow(r1,4)-177.053504*pow(r2,4)+322.2458758*pow(r2,2)+316.9172736*pow(r1,2)+1482.191429;
     if (discr < 0)
     {
-      Serial.print("Well, we're fucked"); // In this case we really are fucked
+      Serial.print("ERROR: Discriminant < 0 -> the math is incorrect"); // In this case we really are fucked
     }
     else if(discr ==0)
     {
-      pos[0]=-(0.09594605+12.752*pow(r1,2)-12.752*pow(r2,2));
+      pos[0] =-(0.09594605+12.752*pow(r1,2)-12.752*pow(r2,2));
       pos[0] = x1/88.526752;
       pos[1] = sqrt(pow(r2,2)-pow(pos[0],2)-3.188*pos[0]-2.540836);
     }
@@ -218,11 +254,11 @@ void loop() {
       y2 = sqrt(pow(r2,2)-pow(x2,2)-3.188*x2-2.540836);
       float distx1 = x1-1.594;
       float disty1 = y1-0.95;
-      dist1 = sqrt(((distx1)*(distx1)+(disty1)*(dist1)));
+      dist1 = sqrt(((distx1)*(distx1)+(disty1)*(disty1)));
       d1 = abs(r3-dist1);
       float distx2 = x2-1.594;
       float disty2 = y2-0.95;
-      dist1 = sqrt(((distx2)*(distx2)+(disty2)*(dist2)));
+      dist1 = sqrt(((distx2)*(distx2)+(disty2)*(disty2)));
       d2 = abs(r3-dist2);
       if (d1<d2){
         pos[0] = x1;
@@ -255,10 +291,11 @@ void loop() {
 //------------------------------//
 
 
+
   void safetyCheck(){
     float akku1ges = 0;
    float akku2ges = 0;
-    for(int i=0; i <=5;i++){
+    for(int i = 0; i <= 5;i++){
       float akku1 = analogRead(A1) * 4.9 * 5.7;
      float akku2 = analogRead(A2) * 4.9 * 11 - akku1;
       akku1ges = akku1ges+akku1;
@@ -274,6 +311,9 @@ void loop() {
 //------------------------------//
 //        TESTING               //
 //------------------------------//
+
+
+
   void testCalc(){
     calculatePosition();
     Serial.print("X:");
@@ -283,6 +323,7 @@ void loop() {
     Serial.print(pos[1]);
     drive(20);
   }
+
 
 //------------------------------//
 //          LOW-LEVEL           //
@@ -429,16 +470,16 @@ if((should < 50)||(should > 980)){//if commanded position is outside safety rang
   while(is != should){
     if(is  < 50) {//== 0){
       drumServo.writeMicroseconds(1500);
-      return;//power cable not connected to trommel
+      return;//power cable not connected to trommel or rotation is unsafe
     }
     if(is  > 980) {//== 1023){
       drumServo.writeMicroseconds(1500);
-      return;//power cable not connected to trommel
+      return;//power cable not connected to trommel or rotation is unsafe
     }
-    Serial.print("is = ");
-    Serial.print(is);
-    Serial.print(" should = ");
-    Serial.println(should);
+    //Serial.print("is = ");
+    //Serial.print(is);
+    //Serial.print(" should = ");
+    //Serial.println(should);
     int offset = (should-is);
     if(offset > 700){
       offset = 700;
@@ -446,16 +487,33 @@ if((should < 50)||(should > 980)){//if commanded position is outside safety rang
     if(offset < -700){
       offset = -700;
     }
-    if(offset > 0){
-      drumServo.writeMicroseconds(1545+offset);//make this close to 1505 if the "trommel" jitters
-    } else {
-      drumServo.writeMicroseconds(1455+offset);//make this close to 1505 if the "trommel" jitters
+    
+    if(abs(offset) < 15)
+    {
+      if(offset < 0)
+      {
+        drumServo.writeMicroseconds(1462);
+      }
+      else
+      {
+        drumServo.writeMicroseconds(1537);
+      }
+    }
+    else{
+      if(offset > 0){
+        drumServo.writeMicroseconds(1535+offset);//make this close to 1500 if the "trommel" jitters
+      } else {
+        drumServo.writeMicroseconds(1465+offset);//make this close to 1505 if the "trommel" jitters
+      }
     }
     is = analogRead(A0);
   }
   drumServo.writeMicroseconds(1500);
+  Serial.print("is = ");
+  Serial.print(is);
+  Serial.print(" should = ");
+  Serial.println(should);
   Serial.println("");
-  
 }
 
 void readValues() {
@@ -475,27 +533,28 @@ void turnDrumTo(unsigned short pos)
   switch(pos)
   {
     case 0:
-    moveServo(643);
+    moveServo(649);
+    break;
     case 1:
     moveServo(576);
     break;
     case 2:
-    moveServo(509);
+    moveServo(504);
     break;
     case 3:
-    moveServo(421);
+    moveServo(414);
     break;
     case 4:
-    moveServo(342);
+    moveServo(346);
     break;
     case 5:
-    moveServo(264);
+    moveServo(267);
     break;
     case 6:
-    moveServo(184);
+    moveServo(180);
     break;
     case 7:
-    moveServo(106);
+    moveServo(98);
     break;
     default:
     Serial.println("ERROR: Drum can only be turned to positions zero through seven.");
@@ -503,13 +562,34 @@ void turnDrumTo(unsigned short pos)
     
   }
 }
+
+void shakeDrum()
+{
+  
+  drumServo.writeMicroseconds(1530);
+  delay(700);
+  drumServo.writeMicroseconds(1470);
+  delay(1400);
+  drumServo.writeMicroseconds(1530);
+  delay(700);
+
+}
+
 void tmp()
 { 
+  //Serial.println(analogRead(A0));
+  //return;
+
   testDrum();
-  delay(5000);
-  turnDrumTo(4);
-  delay(5000);
+  
+  /*
+  for(int i = 0; i < 8; i++)
+  {
+    shootBall(i);
+  }
+  */
 }
+
 /*
  * Lädt den gewünschten Ball in die Kanone und feuert
  * Die Bälle sind gegen den Uhrzeigersinn nummeriert, ausgehend von dem Slot mit dem MAI-Logo
@@ -523,6 +603,8 @@ void shootBall(unsigned int ball)
   unsigned int drumIndex = ball + 4;
   if(drumIndex > 7)
     drumIndex -= 8;
+  Serial.print("Turning drum to index ");
+  Serial.println(drumIndex);
   turnDrumTo(drumIndex);
   if((millis() - sysTime) < 1400)
     delay(1400 - abs((millis() - sysTime)));
@@ -536,6 +618,7 @@ void shootBall(unsigned int ball)
   delay(2000);
   openCannonGate(false);
   securePiston(false);
+  delay(50);
   Serial.println("free");
 }
 
@@ -558,11 +641,12 @@ void testDrum()
 {
   for(short i = 0; i < 8; i++)
   {
-    openDropGate(false);
-    delay(50);
+    //openDropGate(false);
+    //delay(50);
     turnDrumTo(i);
-    openDropGate(true);
-    delay(1000);
+    Serial.println(i);
+    shakeDrum();
+    //openDropGate(true);
   }
 }
 
@@ -620,30 +704,6 @@ void turn(short angle)
   if(pol) steps*=1.04;
   Serial.println(steps);
   turn(steps, pol);
-  // unsigned int steps = abs(angle)/anglePerStep;
-
-/*
-  digitalWrite(stDirPinL, pol ? HIGH : LOW);
-  digitalWrite(stDirPinR, pol ? HIGH : LOW);
-  
-  float a = 0; //für Beschleunigungsphase
-  for(int i = 0; i < steps; i++)
-  {
-    a = 0;
-    
-    if(i < 800 && i <= steps/2)
-      a = (tPerStep / 800) * (800 - i);
-    if(steps - i < 800 && i > steps/2)
-      a = (tPerStep / 800) * (800 - (steps - i));
-    
-    digitalWrite(stPinL, HIGH);
-    digitalWrite(stPinR, HIGH);
-    delayMicroseconds(tPerStep + a);
-    digitalWrite(stPinL, LOW);
-    digitalWrite(stPinR, LOW);
-    delayMicroseconds(tPerStep + a);
-  }
- */
 }
 
 /*
@@ -736,7 +796,6 @@ int readUS(){
 //        Positioning         //
 //----------------------------//
 
-#include <Stepper.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 
@@ -751,7 +810,7 @@ int readUS(){
  *  1: Zeitstempel in Zentisekunden;
  */
 volatile short activeTower;
-volatile unsigned long startTime = 0;
+volatile bool isVerified;
 
 /*
  * Letzte bekannte Position
@@ -790,12 +849,11 @@ void initializePosSystem()
   Serial.println(".");
 
   pinMode(trigPinPos, OUTPUT);
-  attachInterrupt(digitalPinToInterrupt(echoPinPos), measure, CHANGE);
   digitalWrite(trigPinPos, LOW);
 
   for(int i = 0; i < 8; i++)
   {
-    for(int j = 0; i < 3; i++)
+    for(int j = 0; j < 3; j++)
     {
       measurements[i][j][0] = 32000;
       measurements[i][j][1] = 0;
@@ -803,18 +861,27 @@ void initializePosSystem()
   }
 }
 
-void measure(){
-  if(digitalRead(echoPinPos) == HIGH){
-    startTime = micros();
-  } else{
-    long duration = micros()-startTime; 
-    int distance = duration*0.034;
+int measure(){
+  digitalWrite(trigPinPos, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPinPos, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPinPos, LOW);
+  long duration = pulseIn(echoPinPos, HIGH, 250000);
+  if(isVerified)
+  {
+    isVerified = false;
+    const int deviation = -5; //experimentell ermittelt; Standardabweichung die bei der Messung entsteht
+    int distance = duration*0.034 + deviation;
     addMeasurement(activeTower, distance, millis() * 10);
-    Serial.print("Distance to tower");
-    Serial.print(activeTower);
-    Serial.print(": ");
+    Serial.print("Distance: ");
     Serial.print(distance);
-    Serial.println(" cm.");
+    Serial.println("cm");
+    return distance;
+  }
+  else
+  {
+    Serial.println("Measurement was not verified.");    
   }
 }
 
@@ -829,10 +896,10 @@ void addMeasurement(unsigned short tower, unsigned int distance, unsigned int ti
   measurements[0][tower][1] = timestamp;
 }
 
+
 /*
- * sender/receiver: 0 = all, 1 = tower 1, 2 = tower 2, 3 = tower 3, 4 = bot 1, 5 = bot 2;
- * order: 'm' = measure, 'i' = incoming, 's' = send position to other bot;
- * message syntax: "receiver","order","data"
+ * Reacts to receiving a message via radio
+ * If the message consists of the letter 'v' and the requested towers id, it is verified that that tower received the request
  */
 void receivedMessage() {
   if(radio.available()) {
@@ -840,111 +907,40 @@ void receivedMessage() {
     
     radio.read(&text, sizeof(text));
 
-    char receiver = text[0];
-    
-    if(receiver != '0' && receiver != '4') return;
-
-    char order = text[1];
-    String data = String(text).substring(2);
-
-    if(order == 'm') 
-      orderedMeasure(data);
-    else
+    if(text[0] = 'v')
     {
-      if(order == 'i')
-        incomingPos(data);
-      else
-      {
-        if(order == 's')
-          orderedSendPos();
-        else
-        {
-          Serial.print("ERROR: Invalid order '");
-          Serial.print(order);
-          Serial.println("'.");
-        }
-      }
+       if(isDigit(text[1]))
+       {
+          isVerified = (activeTower == text[1] - '0');  
+       }
     }
+    
     Serial.println("Signal");
   } else{
     Serial.println("ERROR: Interrupt triggered, even thought there is no message out there.");
   }
 }
 
-//inzwischen wohl überflüssig
 /*
  * Leitet die Distanzmessung zu einem bestimmten Tower ein
  * @param data erster character entspricht dem Tower 0-2, zu dem die Distanz gemessen werden soll
+ * @return gemessene Distanz
  */
-void orderedMeasure(String data)
+int requestMeasure(unsigned short tower)
 {
-  char c = data.charAt(0);
-  if(isdigit(c)){
-    unsigned short a = data.charAt(0) - '0';
-    if(a <= 2)
-    {
-      activeTower = a;
-      prepUS();
-      return;
-    }
-  }
-  Serial.print("ERROR: '");
-  Serial.print(c);
-  Serial.print("' is not a valid tower.");
-}
-
-
-//inzwischen wohl überflüssig
-/*
- * erster char: nummer des Bots (0-3)
- * Rest des Strings: zwei ints, getrennt durch ein ','
- */
-void incomingPos(String data)
-{
-  char c = data.charAt(0);
-  if(isdigit(c))
+  if(tower <= 2)
   {
-    unsigned short bot = data.charAt(0) - '0';
-    if(bot <= 3)
-    {
-      short separatorIndex = data.indexOf(',');
-      if(separatorIndex != -1)
-      {
-        lKPos[bot][0] = data.substring(1, separatorIndex - 1).toInt();
-        lKPos[bot][1] = data.substring(separatorIndex + 1).toInt();
-        
-      }
-      else
-      {
-        Serial.println("ERROR: Submitted coordinates are invalid.");
-      }
-      return;
-    }
+    radioWriteMode();
+    const char message[32] = {'0' + tower};
+    radio.write(&message, sizeof(message));
+    radioListenMode();
+    activeTower = tower;
+    return measure();
   }
-    Serial.print("ERROR: '");
-    Serial.print(c);
-    Serial.print("' is not a valid bot.");
-}
-
-//inzwischen wohl überflüssig
-/*
- * Sends the bots coordinates to the other bot; First character of the data is the bot that sent it (0-3); Coordinates are separated by ','.
- */
-void orderedSendPos() {
-  radioWriteMode();
-  String msg = String("5i0" + lKPos[0][0]) + "," + String(lKPos[0][1]);
-  char text[32] = "";
-  msg.toCharArray(text, sizeof(text));
-  radio.write(&text, sizeof(text));
-  radioListenMode();
-}
-
-void prepUS() {
-  digitalWrite(trigPinPos, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPinPos, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPinPos, LOW);
+  
+  Serial.print("ERROR: '");
+  Serial.print(tower);
+  Serial.print("' is not a valid tower.");
 }
 
 void radioListenMode() {
@@ -1006,7 +1002,6 @@ void funktionalitaetTesten()
   //drive(50);
   //turn(90);
 }
-
 
 
 
