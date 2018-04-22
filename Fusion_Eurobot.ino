@@ -37,9 +37,12 @@ void setup() {
 }
 
 void loop() {
+  //Serial.println("loop start");
+  //safetyCheck();  //needs to be fixed!!!
   //Serial.println(analogRead(A0));
-  testCalc();
+  tmp();
   //main();
+  //Serial.println("loop end");
   
 }
 //---------------------//
@@ -181,7 +184,7 @@ void loop() {
 
 
   void getDistances(){
-    for(int i = 0;i>=7; i++){
+    /*for(int i = 0;i>=7; i++){
       if( millis()/10- measurements[i][0][1] < 100 && measurements[i][0][0] < 360){
         if(abs(measurements[i][0][0]-estimatedr1)<20){
           r1 = measurements[i][0][0];
@@ -213,11 +216,44 @@ void loop() {
           r3 = estimatedr3;
         }
      }
+   }*/
+   Serial.println("getDistance start");
+   r1 = requestMeasure(0);
+   r2 = requestMeasure(1);
+   r3 = requestMeasure(2);
+   estimate();
+   while(abs(r1-estimatedr1) > 20){
+    r1 = requestMeasure(0);
+    Serial.println("r1 was not succesful");
+    Serial.print("r1:");
+    Serial.println(r1);
+    }
+    while(abs(r2-estimatedr2) > 20){
+    r2 = requestMeasure(1);
+    Serial.println("r2 was not succesful");
+    Serial.print("r2:");
+    Serial.println(r2);
+    }
+    while(abs(r3-estimatedr3) > 20){
+    r3 = requestMeasure(2);
+    Serial.println("r3 was not succesful");
+    Serial.print("r3:");
+    Serial.println(r3);
+    }
+    Serial.println("getDistance end");
    }
+
+
+  void calculatePositionTobi(float dist1 , float dist2){
+    const float pi = 3.14159;
+    float angleRatio = (dist2 * dist2 + 200 * 200 - dist1 * dist1)/(2 * dist2 * 200);
+    //Koordinatenursprung links unten, gerade in cm
+    float x1 = 300 - cos(pi/2 - acos(angleRatio)) * dist2;
+    float y1 = sin(pi/2 - acos(angleRatio)) * dist2;
+    pos[0] = x1;
+    pos[1] = y1;
   }
-
-
-
+  
   void calculatePosition(){ // Many thanks to Thorben, as all constants in this method have been calculated by him 
     float x1;
     float y1;
@@ -282,9 +318,17 @@ void loop() {
 
 
   void estimate(){
+    Serial.println("estimate start");
     estimatedr1 = sqrt(pow(-1.594-estPos[0],2)+pow(0.95-estPos[1],2));
+    Serial.print("estimatedr1:");
+    Serial.println(estimatedr1);
     estimatedr2 = sqrt(pow(1.594-estPos[0],2)+pow(estPos[1],2));
+    Serial.print("estimatedr2:");
+    Serial.println(estimatedr2);
     estimatedr3 = sqrt(pow(-1.594-estPos[0],2)+pow(-0.95-estPos[1],2));
+    Serial.print("estimatedr3:");
+    Serial.println(estimatedr3);
+    Serial.println("estimate end");
   }
 //------------------------------//
 //          AKKUS               //
@@ -293,18 +337,22 @@ void loop() {
 
 
   void safetyCheck(){
-    float akku1ges = 0;
-   float akku2ges = 0;
+   float akku1ges = 0.0;
+   float akku2ges = 0.0;
     for(int i = 0; i <= 5;i++){
-      float akku1 = analogRead(A1) * 4.9 * 5.7;
+     float akku1 = analogRead(A1) * 4.9 * 5.7;
      float akku2 = analogRead(A2) * 4.9 * 11 - akku1;
-      akku1ges = akku1ges+akku1;
+     akku1ges = akku1ges+akku1;
      akku2ges = akku2ges+akku2;
     }
     if(akku1ges <= minAkku1){
+      Serial.print("Akku1 to low! Akku1:");
+      Serial.println(akku1ges);
       delay(10000000000);
     }
     else if(akku2ges <= minAkku2){
+      Serial.print("Akku2 to low! Akku2:");
+      Serial.println(akku2ges);
       delay(10000000000);
     }
   }
@@ -315,13 +363,21 @@ void loop() {
 
 
   void testCalc(){
-    calculatePosition();
+    Serial.println("testCalc start");
+    getDistances();
+    //calculatePositionTobi();
     Serial.print("X:");
     Serial.print(pos[0]);
     Serial.print("  ");
     Serial.print("Y:");
     Serial.print(pos[1]);
     drive(20);
+    Serial.println("testCalc end");
+  }
+
+  void testRadio(float towerNumber)
+  {
+    Serial.println(requestMeasure(towerNumber));
   }
 
 
@@ -476,10 +532,12 @@ if((should < 50)||(should > 980)){//if commanded position is outside safety rang
       drumServo.writeMicroseconds(1500);
       return;//power cable not connected to trommel or rotation is unsafe
     }
-    //Serial.print("is = ");
-    //Serial.print(is);
-    //Serial.print(" should = ");
-    //Serial.println(should);
+    /*
+    Serial.print("is = ");
+    Serial.print(is);
+    Serial.print(" should = ");
+    Serial.println(should);
+    */
     int offset = (should-is);
     if(offset > 700){
       offset = 700;
@@ -533,28 +591,28 @@ void turnDrumTo(unsigned short pos)
   switch(pos)
   {
     case 0:
-    moveServo(649);
+    moveServo(698);
     break;
     case 1:
-    moveServo(576);
+    moveServo(625);
     break;
     case 2:
-    moveServo(504);
+    moveServo(560);
     break;
     case 3:
-    moveServo(414);
+    moveServo(474);
     break;
     case 4:
-    moveServo(346);
+    moveServo(395);
     break;
     case 5:
-    moveServo(267);
+    moveServo(323);
     break;
     case 6:
-    moveServo(180);
+    moveServo(247);
     break;
     case 7:
-    moveServo(98);
+    moveServo(172);
     break;
     default:
     Serial.println("ERROR: Drum can only be turned to positions zero through seven.");
@@ -644,10 +702,13 @@ void testDrum()
     //openDropGate(false);
     //delay(50);
     turnDrumTo(i);
+    Serial.print("Drum-Positon:");
     Serial.println(i);
     shakeDrum();
     //openDropGate(true);
+    delay(1000);
   }
+  drumServo.writeMicroseconds(1500);
 }
 
 //----------------------------//
@@ -861,18 +922,19 @@ void initializePosSystem()
   }
 }
 
-int measure(){
+long measure(){
   digitalWrite(trigPinPos, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPinPos, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPinPos, LOW);
   long duration = pulseIn(echoPinPos, HIGH, 250000);
-  if(isVerified)
+  Serial.print(duration);
+  if(true)//isVerified wurde durch true ersetzt
   {
     isVerified = false;
-    const int deviation = -5; //experimentell ermittelt; Standardabweichung die bei der Messung entsteht
-    int distance = duration*0.034 + deviation;
+    const long deviation = -5.0; //experimentell ermittelt; Standardabweichung die bei der Messung entsteht
+    long distance = duration*0.034 + deviation;
     addMeasurement(activeTower, distance, millis() * 10);
     Serial.print("Distance: ");
     Serial.print(distance);
@@ -928,6 +990,8 @@ void receivedMessage() {
  */
 int requestMeasure(unsigned short tower)
 {
+  Serial.print("requestMeasure start Tower:");
+  Serial.println(tower);
   if(tower <= 2)
   {
     radioWriteMode();
@@ -935,6 +999,8 @@ int requestMeasure(unsigned short tower)
     radio.write(&message, sizeof(message));
     radioListenMode();
     activeTower = tower;
+    //Serial.print("requestMeasure end Tower:");
+    //Serial.println(tower);
     return measure();
   }
   
